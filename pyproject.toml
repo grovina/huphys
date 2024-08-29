@@ -1,0 +1,38 @@
+[project]
+name = "huphys"
+version = "0.1.0"
+requires-python = ">= 3.12"
+dependencies = [
+    "fastapi==0.95.1",
+    "numpy==2.1.0",
+    "plotly==5.22.0",
+    "uvicorn==0.22.0",
+    "websockets==11.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+]
+test = [
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+lint.select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+]
+
+[tool.mypy]
+check_untyped_defs = true
+show_error_codes = true
+explicit_package_bases = true  # To avoid needing `__init__.py` files
+disable_error_code = ["import-untyped"]
+
+[tool.setuptools.packages.find]
+include = ["meminem"]

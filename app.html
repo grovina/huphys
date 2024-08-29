@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Physiological Model</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --secondary-color: #45a049;
+            --background-color: #f4f4f4;
+            --text-color: #333;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: var(--text-color);
+        }
+        #startButton {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #startButton:hover {
+            background-color: var(--secondary-color);
+        }
+        #time {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .loading::after {
+            content: "⏳";
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .metrics-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .controls button {
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .controls button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .controls input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Human Physiological Model</h1>
+        <button id="startButton">Start Simulation</button>
+        <div id="time">Simulation Time: 0s</div>
+        <div class="loading" id="loadingIndicator"></div>
+        <div class="controls">
+            <button id="exerciseButton">Start Exercise</button>
+            <button id="drinkButton">Drink Water</button>
+            <input type="number" id="drinkAmount" value="250" min="0" max="1000" step="50">
+            <button id="eatButton">Eat Sugar</button>
+            <input type="number" id="eatAmount" value="50" min="0" max="500" step="10">
+            <button id="peeButton">Pee</button>
+        </div>
+        <div id="metricsDisplay" class="metrics-container"></div>
+    </div>
+    <script>
+        var ws;
+        var startButton = document.getElementById("startButton");
+        var exerciseButton = document.getElementById("exerciseButton");
+        var drinkButton = document.getElementById("drinkButton");
+        var eatButton = document.getElementById("eatButton");
+        var peeButton = document.getElementById("peeButton");
+        var timeDiv = document.getElementById("time");
+        var loadingIndicator = document.getElementById("loadingIndicator");
+        var metricsDisplay = document.getElementById("metricsDisplay");
+
+        function updateMetricsDisplay(metrics) {
+            function formatMetric(metric) {
+                if (typeof metric === 'object' && metric.hasOwnProperty('value') && metric.hasOwnProperty('unit')) {
+                    const value = typeof metric.value === 'number' ? metric.value.toFixed(2) : metric.value;
+                    return `${value} ${metric.unit}`;
+                }
+                return JSON.stringify(metric);
+            }
+
+            function formatMetrics(obj, indent = 0) {
+                let result = '';
+                const indentStr = '  '.repeat(indent);
+                for (const [key, value] of Object.entries(obj)) {
+                    if (typeof value === 'object' && !value.hasOwnProperty('value')) {
+                        result += `${indentStr}${key}:\n${formatMetrics(value, indent + 1)}`;
+                    } else {
+                        result += `${indentStr}${key}: ${formatMetric(value)}\n`;
+                    }
+                }
+                return result;
+            }
+
+            metricsDisplay.innerHTML = '<pre>' + formatMetrics(metrics) + '</pre>';
+
+            // Update simulation time
+            if (metrics.Time) {
+                timeDiv.textContent = `Time: ${metrics.Time.value.toFixed(2)}${metrics.Time.unit}`;
+            }
+        }
+
+        function sendAction(action, amount = null) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const data = { action: action };
+                if (amount !== null) {
+                    data.amount = amount;
+                }
+                ws.send(JSON.stringify(data));
+            }
+        }
+
+        startButton.onclick = function() {
+            if (!ws || ws.readyState === WebSocket.CLOSED) {
+                ws = new WebSocket("ws://localhost:8000/ws");
+                ws.onmessage = function(event) {
+                    try {
+                        var metrics = JSON.parse(event.data);
+                        updateMetricsDisplay(metrics);
+                    } catch (error) {
+                        console.error('Error processing message:', error);
+                    }
+                };
+                ws.onopen = function() {
+                    startButton.textContent = "Stop Simulation";
+                    loadingIndicator.style.display = 'block';
+                };
+                ws.onclose = function() {
+                    startButton.textContent = "Start Simulation";
+                    loadingIndicator.style.display = 'none';
+                };
+                ws.onerror = function(error) {
+                    console.error('WebSocket Error:', error);
+                    alert('WebSocket connection error. Please check your connection and try again.');
+                };
+            } else {
+                ws.close();
+            }
+        };
+
+        exerciseButton.onclick = function() {
+            if (exerciseButton.textContent === "Start Exercise") {
+                sendAction('start_exercise');
+                exerciseButton.textContent = "Stop Exercise";
+            } else {
+                sendAction('stop_exercise');
+                exerciseButton.textContent = "Start Exercise";
+            }
+        };
+
+        drinkButton.onclick = function() {
+            const amount = parseFloat(document.getElementById("drinkAmount").value);
+            sendAction('drink', amount);
+        };
+
+        eatButton.onclick = function() {
+            const amount = parseFloat(document.getElementById("eatAmount").value);
+            sendAction('eat', amount);
+        };
+
+        peeButton.onclick = function() {
+            sendAction('pee');
+        };
+    </script>
+</body>
+</html>
