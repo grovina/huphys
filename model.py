@@ -8,6 +8,9 @@ class Blood:
     ):
         self.volume = volume
         self.glucose_amount = 4500 * (volume / 5000)  # mg
+        self.fatty_acid_amount = 500 * (volume / 5000)  # mg
+        self.amino_acid_amount = 200 * (volume / 5000)  # mg
+        self.oxygen_amount = 950  # mL O2 (initial amount for 98% saturation)
         self.co2_amount = 100 * (volume / 5000)  # mmol
         self.epinephrine_amount = 2.5 * (volume / 5000)  # ng
         self.nitric_oxide_amount = 4 * (volume / 5000)  # ng
@@ -20,8 +23,6 @@ class Blood:
         self.ph = 7.4  # dimensionless
         self.hematocrit = 45  # percentage
         self.hemoglobin = 15  # g/dL
-        self.oxygen_saturation = 0.98  # dimensionless (fraction)
-        self.dissolved_oxygen = 0.003  # mL O2 / dL blood
         self.fat_amount = 500 * (volume / 5000)  # mg
 
     @property
@@ -68,6 +69,18 @@ class Blood:
     def fat_concentration(self):
         return self.fat_amount / (self.volume / 100)  # mg/dL
 
+    @property
+    def total_oxygen_capacity(self):
+        return self.hemoglobin * 1.34 * (self.volume / 100)  # mL O2
+
+    @property
+    def oxygen_saturation(self):
+        return min(1.0, self.oxygen_amount / self.total_oxygen_capacity)
+
+    @property
+    def oxygen_amount(self):
+        return self.total_oxygen_capacity * self.oxygen_saturation
+
     def __str__(self) -> str:
         return (
             f"Glucose concentration: {self.glucose_concentration:.2f}, "
@@ -100,9 +113,8 @@ class Blood:
             "insulin_concentration": {"value": self.insulin_concentration, "unit": "μU/mL"},
             "glucagon_concentration": {"value": self.glucagon_concentration, "unit": "ng/mL"},
             "hemoglobin": {"value": self.hemoglobin, "unit": "g/dL"},
+            "oxygen_amount": {"value": self.oxygen_amount, "unit": "mL O2"},
             "oxygen_saturation": {"value": self.oxygen_saturation, "unit": ""},
-            "dissolved_oxygen": {"value": self.dissolved_oxygen, "unit": "mL O2/dL blood"},
-            "total_oxygen_content": {"value": self.get_oxygen_content(), "unit": "mL O2"},
             "bicarbonate_concentration": {"value": self.bicarbonate_concentration, "unit": "mEq/L"},
             "fat_concentration": {"value": self.fat_concentration, "unit": "mg/dL"},
         }
@@ -128,13 +140,6 @@ class Blood:
         # Ensure pH and bicarbonate stay within physiological limits
         self.ph = max(6.8, min(7.8, self.ph))
         self.bicarbonate_amount = max(15000, min(35000, self.bicarbonate_amount))
-
-    def calculate_oxygen_content(self):
-        # Oxygen content (mL O2 / dL blood) = (1.34 * Hb * SaO2) + dissolved O2
-        return (1.34 * self.hemoglobin * self.oxygen_saturation) + self.dissolved_oxygen
-
-    def get_oxygen_content(self):
-        return self.calculate_oxygen_content() * (self.volume / 100)  # Total oxygen in mL
 
 
 class Nerve:
@@ -178,45 +183,74 @@ class Organ:
         return metrics
 
     def consume_nutrients(self, dt: float) -> None:
-        oxygen_available = self.blood.get_oxygen_content()  # mL O2
+        oxygen_available = self.blood.oxygen_amount  # mL O2
         glucose_available = self.blood.glucose_amount  # mg
-        fat_available = self.blood.fat_amount  # mg
+        fatty_acid_available = self.blood.fatty_acid_amount  # mg
+        amino_acid_available = self.blood.amino_acid_amount  # mg
         
         # Calculate energy consumption based on demand and availability
-        energy_consumed = self.energy_demand * dt / 3600  # kcal, adjusted for dt in seconds
+        energy_demanded = self.energy_demand * dt / 3600  # kcal, adjusted for dt in seconds
         
-        # Determine energy sources
-        energy_from_fat = min(energy_consumed * self.fat_oxidation_rate, fat_available * 9 / 1000)  # 9 kcal/g of fat
-        energy_from_glucose = energy_consumed - energy_from_fat
+        # Glucose consumption (priority)
+        if energy_demanded > 0:
+            glucose_energy = min(energy_demanded, glucose_available * 4 / 1000)  # 4 kcal/g of glucose
+            glucose_consumed = glucose_energy * 1000 / 4  # Convert kcal to mg
+            energy_demanded -= glucose_energy
+        else:
+            glucose_consumed = 0
         
-        # Convert energy to glucose and fat consumption
-        glucose_consumed = energy_from_glucose * 1000 / 4  # 1 g glucose = 4 kcal, convert to mg
-        fat_consumed = energy_from_fat * 1000 / 9  # 1 g fat = 9 kcal, convert to mg
+        # Fatty acid consumption (secondary)
+        if energy_demanded > 0:
+            fatty_acid_energy = min(energy_demanded, fatty_acid_available * 9 / 1000)  # 9 kcal/g of fat
+            fatty_acid_consumed = fatty_acid_energy * 1000 / 9  # Convert kcal to mg
+            energy_demanded -= fatty_acid_energy
+        else:
+            fatty_acid_consumed = 0
         
-        # Ensure we don't consume more than available
-        glucose_consumed = min(glucose_consumed, glucose_available)
-        fat_consumed = min(fat_consumed, fat_available)
+        # Amino acid consumption (last resort)
+        if energy_demanded > 0:
+            amino_acid_energy = min(energy_demanded, amino_acid_available * 4 / 1000)  # 4 kcal/g of protein
+            amino_acid_consumed = amino_acid_energy * 1000 / 4  # Convert kcal to mg
+        else:
+            amino_acid_consumed = 0
         
-        # Calculate oxygen consumption
-        oxygen_consumed = min(self.oxygen_demand * dt / 60, oxygen_available)  # mL O2, adjusted for dt in seconds
+        # Calculate total energy from each source
+        total_energy = (glucose_consumed * 4 + fatty_acid_consumed * 9 + amino_acid_consumed * 4) / 1000  # kcal
         
-        # Calculate respiratory quotient (RQ) based on mixture of glucose and fat metabolism
-        total_consumed = glucose_consumed + fat_consumed
-        rq = (glucose_consumed * 1.0 + fat_consumed * 0.7) / total_consumed if total_consumed > 0 else 0.85
+        # Calculate respiratory quotient (RQ)
+        if total_energy > 0:
+            rq = (glucose_consumed * 1.0 + fatty_acid_consumed * 0.7 + amino_acid_consumed * 0.8) / (glucose_consumed + fatty_acid_consumed + amino_acid_consumed)
+        else:
+            rq = 0.85  # Default RQ if no energy consumed
+        
+        # Calculate oxygen consumption based on energy expenditure and RQ
+        oxygen_consumed = total_energy * 0.2 / rq  # Approximate relationship between energy, RQ, and O2 consumption
+        
+        # Ensure we don't consume more than available oxygen
+        if oxygen_consumed > oxygen_available:
+            oxygen_consumed = oxygen_available
+            # Adjust energy consumption based on available oxygen
+            actual_total_energy = oxygen_consumed * rq / 0.2  # Reverse the calculation of oxygen consumption
+            
+            # Recalculate nutrient consumption based on adjusted energy
+            glucose_consumed *= actual_total_energy / total_energy
+            fatty_acid_consumed *= actual_total_energy / total_energy
+            amino_acid_consumed *= actual_total_energy / total_energy
+            total_energy = actual_total_energy
         
         # Calculate CO2 production based on oxygen consumption and RQ
         co2_produced = oxygen_consumed * rq  # mL CO2
         
-        # Update blood oxygen, glucose, and fat levels
-        oxygen_saturation_change = oxygen_consumed / (1.34 * self.blood.hemoglobin * self.blood.volume / 100)
-        self.blood.oxygen_saturation = max(0, self.blood.oxygen_saturation - oxygen_saturation_change)
+        # Update blood nutrient levels
         self.blood.glucose_amount -= glucose_consumed
-        self.blood.fat_amount -= fat_consumed
+        self.blood.fatty_acid_amount -= fatty_acid_consumed
+        self.blood.amino_acid_amount -= amino_acid_consumed
+        
+        # Update blood oxygen levels
+        self.blood.oxygen_amount -= oxygen_consumed
         
         # Update blood CO2 concentration
-        # Convert mL CO2 to mmol CO2 using a more appropriate conversion factor
-        # Approximately 0.0308 mmol/mL at body temperature and pressure
-        co2_produced_mmol = co2_produced * 0.0308
+        co2_produced_mmol = co2_produced * 0.0308  # Convert mL CO2 to mmol
         self.blood.co2_amount += co2_produced_mmol
 
     def process_insulin(self, dt: float) -> None:
@@ -335,7 +369,7 @@ class Lungs(Organ):
         )
         self.tidal_volume = 500  # mL
         self.respiratory_rate = 12  # breaths per minute
-        self.partial_pressure_o2 = 100  # mmHg
+        self.alveolar_po2 = 100  # mmHg
         self.alveolar_pco2 = 40  # mmHg
         self.diffusion_capacity_o2 = 25  # mL/min/mmHg
         self.diffusion_capacity_co2 = 400  # mL/min/mmHg
@@ -344,8 +378,6 @@ class Lungs(Organ):
         self.time_since_last_breath = 0  # seconds
         self.functional_residual_capacity = 2500  # mL
         self.dead_space_volume = 150  # mL
-        self.compliance = 200  # mL/cmH2O
-        self.resistance = 1  # cmH2O/L/s
 
     def _organ_specific_processing(self, dt: float) -> None:
         self.time_since_last_breath += dt
@@ -375,27 +407,38 @@ class Lungs(Organ):
         if volume_delta > 0:  # Inhaling
             # Mix fresh air with existing alveolar air
             fresh_fraction = volume_delta / alveolar_volume
-            self.partial_pressure_o2 = (1 - fresh_fraction) * self.partial_pressure_o2 + fresh_fraction * fresh_o2
+            self.alveolar_po2 = (1 - fresh_fraction) * self.alveolar_po2 + fresh_fraction * fresh_o2
             self.alveolar_pco2 = (1 - fresh_fraction) * self.alveolar_pco2 + fresh_fraction * fresh_co2
         else:  # Exhaling
             # No change in gas concentrations during exhalation
             pass
 
-        # O2 exchange
-        o2_gradient = self.partial_pressure_o2 - (self.blood.oxygen_saturation * 100)
-        o2_diffusion = self.diffusion_capacity_o2 * o2_gradient * dt / 60
-        new_o2_content = self.blood.calculate_oxygen_content() + (o2_diffusion / self.blood.volume)
-        self.blood.oxygen_saturation = self.oxygen_hemoglobin_dissociation(new_o2_content / (1.34 * self.blood.hemoglobin) * 100)
+        o2_saturation = self.oxygen_hemoglobin_dissociation(self.alveolar_po2)
+        current_o2_content = self.blood.oxygen_amount
+        max_o2_content = 1.34 * self.blood.hemoglobin
+        o2_diffusion = (max_o2_content * o2_saturation - current_o2_content) * self.diffusion_capacity_o2 * dt / 60
+
+        # Update blood oxygen
+        self.blood.oxygen_amount += o2_diffusion
+
+        # Update alveolar O2
+        self.alveolar_po2 -= (o2_diffusion * 760 / alveolar_volume)
 
         # CO2 exchange
-        co2_gradient = self.blood.co2_concentration - self.alveolar_pco2  # mmol/L - mmHg
-        co2_diffusion = self.diffusion_capacity_co2 * co2_gradient * dt / 60  # mL/min * mmHg * min = mL
-        co2_diffusion_mmol = co2_diffusion * 0.0446  # Convert mL to mmol (1 mmol of CO2 = 22.4 mL at STP)
-        self.blood.co2_amount -= co2_diffusion_mmol  # mmol
+        blood_pco2 = self.blood.co2_concentration * 0.03  # Convert concentration to partial pressure (approximate)
+        co2_gradient = blood_pco2 - self.alveolar_pco2
+        co2_diffusion = self.diffusion_capacity_co2 * co2_gradient * dt / 60
 
-        # Update alveolar gas concentrations
-        self.partial_pressure_o2 -= (o2_diffusion * 760 / alveolar_volume)
+        # Update blood CO2
+        co2_diffusion_mmol = co2_diffusion * 0.0446  # Convert mL to mmol (1 mmol of CO2 = 22.4 mL at STP)
+        self.blood.co2_amount -= co2_diffusion_mmol
+
+        # Update alveolar CO2
         self.alveolar_pco2 += (co2_diffusion * 760 / alveolar_volume)
+
+        # Ensure alveolar gas pressures stay within physiological limits
+        self.alveolar_po2 = max(60, min(150, self.alveolar_po2))
+        self.alveolar_pco2 = max(35, min(45, self.alveolar_pco2))
 
     def oxygen_hemoglobin_dissociation(self, po2: float) -> float:
         return 100 * (po2**2.8) / ((po2**2.8) + 26**2.8)
@@ -404,7 +447,7 @@ class Lungs(Organ):
         return {
             "tidal_volume": {"value": self.tidal_volume, "unit": "mL"},
             "respiratory_rate": {"value": self.respiratory_rate, "unit": "breaths/min"},
-            "partial_pressure_o2": {"value": self.partial_pressure_o2, "unit": "mmHg"},
+            "alveolar_po2": {"value": self.alveolar_po2, "unit": "mmHg"},
             "alveolar_pco2": {"value": self.alveolar_pco2, "unit": "mmHg"},
             "expansion": {"value": self.expansion, "unit": ""},
             "alveolar_volume": {"value": self.functional_residual_capacity + (self.tidal_volume * self.expansion), "unit": "mL"},
@@ -497,6 +540,46 @@ class Kidneys(Organ):
         }
 
 
+class Muscle(Organ):
+    def __init__(self, blood: Blood):
+        super().__init__(
+            blood=blood,
+            energy_demand=30,  # kcal/hour
+            insulin_sensitivity=1.5,  # dimensionless
+            oxygen_demand=20,  # mL O2/min
+        )
+        self.glucose_uptake_rate = 2  # mg/min at rest
+        self.glycogen_storage = 500  # g
+        self.base_energy_demand = 30  # kcal/hour
+
+    def _organ_specific_processing(self, dt: float) -> None:
+        glucose_consumed = min(self.glucose_uptake_rate * dt / 60, self.blood.glucose_amount * 0.1)
+        self.blood.glucose_amount -= glucose_consumed
+
+        if self.energy_demand > self.base_energy_demand and self.glycogen_storage > 0:
+            exercise_intensity = (self.energy_demand - self.base_energy_demand) / self.base_energy_demand
+            glycogen_used = min(exercise_intensity * 5 * dt / 60, self.glycogen_storage)  # Up to 5 g/min during intense exercise
+            self.glycogen_storage -= glycogen_used
+            self.blood.glucose_amount += glycogen_used * 1000  # Convert g to mg
+
+    def increase_energy_demand(self, factor: float):
+        self.energy_demand = self.base_energy_demand * factor
+        self.oxygen_demand = self.oxygen_demand * factor
+        self.glucose_uptake_rate = 2 + 18 * (factor - 1)  # Up to 20 mg/min during intense exercise
+
+    def reset_energy_demand(self):
+        self.energy_demand = self.base_energy_demand
+        self.oxygen_demand = 20  # mL O2/min
+        self.glucose_uptake_rate = 2  # mg/min at rest
+
+    def _organ_specific_metrics(self) -> dict:
+        return {
+            "glucose_uptake_rate": {"value": self.glucose_uptake_rate, "unit": "mg/min"},
+            "glycogen_storage": {"value": self.glycogen_storage, "unit": "g"},
+            "energy_demand": {"value": self.energy_demand, "unit": "kcal/hour"}
+        }
+
+
 class Brain(Organ):
     def __init__(self, blood: Blood):
         super().__init__(
@@ -510,6 +593,7 @@ class Brain(Organ):
         self.lungs = None  # Will be set by the HumanBody class
         self.heart = None  # Will be set by the HumanBody class
         self.kidneys = None  # Will be set by the HumanBody class
+        self.muscles = None  # Will be set by the HumanBody class
 
     def _organ_specific_processing(self, dt: float) -> None:
         self.regulate_blood_pressure(dt)
@@ -580,45 +664,20 @@ class Brain(Organ):
     def set_kidneys(self, kidneys: Kidneys):
         self.kidneys = kidneys
 
+    def set_muscles(self, muscles: Muscle):
+        self.muscles = muscles
+
+    def start_exercise(self):
+        if self.muscles:
+            self.muscles.increase_energy_demand(2)  # Double the energy demand
+
+    def stop_exercise(self):
+        if self.muscles:
+            self.muscles.reset_energy_demand()
+
     def _organ_specific_metrics(self) -> dict:
         return {
             "baroreceptor_sensitivity": {"value": self.baroreceptor_sensitivity, "unit": ""},
-        }
-
-
-class Muscle(Organ):
-    def __init__(self, blood: Blood):
-        super().__init__(
-            blood=blood,
-            energy_demand=30,  # kcal/hour
-            insulin_sensitivity=1.5,  # dimensionless
-            oxygen_demand=20,  # mL O2/min
-        )
-        self.fat_oxidation_rate = 0.3  # 30% of energy from fat at rest
-        self.is_exercising = False
-
-    def _organ_specific_processing(self, dt: float) -> None:
-        # Adjust fat oxidation rate based on exercise intensity
-        if self.is_exercising:
-            exercise_intensity = min((self.energy_demand - 30) / 100, 1)  # Normalize to 0-1
-            self.fat_oxidation_rate = max(0.1, 0.3 - 0.2 * exercise_intensity)  # Decrease fat oxidation as intensity increases
-        else:
-            self.fat_oxidation_rate = 0.3
-
-    def start_exercise(self):
-        self.is_exercising = True
-        self.energy_demand *= 2
-        self.oxygen_demand *= 2
-
-    def stop_exercise(self):
-        self.is_exercising = False
-        self.energy_demand /= 2
-        self.oxygen_demand /= 2
-
-    def _organ_specific_metrics(self) -> dict:
-        return {
-            "fat_oxidation_rate": {"value": self.fat_oxidation_rate, "unit": ""},
-            "is_exercising": {"value": self.is_exercising, "unit": ""}
         }
 
 
@@ -676,21 +735,30 @@ class Liver(Organ):
 
     def regulate_glucose(self, dt: float):
         insulin_effect = self.blood.insulin_concentration * self.insulin_sensitivity
-        glucagon_effect = self.blood.glucagon_concentration
+        glucagon_effect = self.blood.glucagon_concentration * self.glucagon_sensitivity
 
-        if self.blood.glucose_concentration > 110:
+        # Glycogen storage (glycogenesis)
+        if self.blood.glucose_concentration > 100:
             glucose_stored = min(self.blood.glucose_amount * 0.1, 10 * insulin_effect * dt)
             self.blood.glucose_amount -= glucose_stored
-            self.glucose_storage += glucose_stored / 100  # Convert mg to g
+            self.glucose_storage += glucose_stored / 1000  # Convert mg to g
+
+        # Glycogen breakdown (glycogenolysis)
         elif self.blood.glucose_concentration < 70 and self.glucose_storage > 0:
-            glucose_released = min(70 - self.blood.glucose_concentration, self.glucose_storage * 100, 10 * glucagon_effect * dt)
+            glucose_released = min(70 - self.blood.glucose_concentration, self.glucose_storage * 1000, 10 * glucagon_effect * dt)
             self.blood.glucose_amount += glucose_released
-            self.glucose_storage -= glucose_released / 100  # Convert mg to g
+            self.glucose_storage -= glucose_released / 1000  # Convert mg to g
 
         # Gluconeogenesis
         if self.blood.glucose_concentration < 60:
-            glucose_produced = 5 * dt / 60  # Produce 5 mg/min of glucose, adjusted for dt in seconds
+            glucose_produced = 5 * dt / 60 * glucagon_effect  # Adjusted for glucagon effect
             self.blood.glucose_amount += glucose_produced
+
+        # Glucose export to blood
+        if self.blood.glucose_concentration < 90:
+            glucose_exported = min(self.glucose_storage * 1000 * 0.01, (90 - self.blood.glucose_concentration) * 10) * dt / 60
+            self.blood.glucose_amount += glucose_exported
+            self.glucose_storage -= glucose_exported / 1000
 
     def regulate_blood_ph(self, dt: float):
         # Simulate ammonia production
@@ -826,15 +894,19 @@ class Pancreas(Organ):
 
     def produce_hormones(self, dt: float):
         # Insulin production
-        if self.blood.glucose_concentration > 110:
-            insulin_produced = self.insulin_production_rate * (self.blood.glucose_concentration - 110) / 10 * dt
+        base_insulin_production = 0.5 * dt / 60  # Base production rate
+        if self.blood.glucose_concentration > 90:
+            glucose_stimulus = (self.blood.glucose_concentration - 90) / 10
+            insulin_produced = (base_insulin_production + self.insulin_production_rate * glucose_stimulus) * dt
             self.blood.insulin_amount += insulin_produced * (self.blood.volume / 1000)
         else:
             self.blood.insulin_amount = max(0, self.blood.insulin_amount - 0.5 * dt)
 
         # Glucagon production
-        if self.blood.glucose_concentration < 70:
-            glucagon_produced = self.glucagon_production_rate * (70 - self.blood.glucose_concentration) / 10 * dt
+        base_glucagon_production = 0.1 * dt / 60  # Base production rate
+        if self.blood.glucose_concentration < 80:
+            glucose_stimulus = (80 - self.blood.glucose_concentration) / 10
+            glucagon_produced = (base_glucagon_production + self.glucagon_production_rate * glucose_stimulus) * dt
             self.blood.glucagon_amount += glucagon_produced
         else:
             self.blood.glucagon_amount = max(0, self.blood.glucagon_amount - 0.05 * dt)
@@ -912,10 +984,11 @@ class HumanBody:
         self.spleen = Spleen(self.blood)
         self.bladder = Bladder(self.blood)
 
-        # Connect brain to lungs and heart
+        # Connect brain to lungs, heart, and muscles
         self.brain.set_lungs(self.lungs)
         self.brain.set_heart(self.heart)
         self.brain.set_kidneys(self.kidneys)
+        self.brain.set_muscles(self.muscles)
 
         # Connect kidneys to bladder
         self.kidneys.set_bladder(self.bladder)
@@ -928,11 +1001,14 @@ class HumanBody:
         self.time = 0  # in seconds
         self.total_caloric_expenditure = 0  # in kcal
 
-    def advance(self, dt: float):
-        finish_time = self.time + dt
-        while self.time < finish_time:
-            self.step()
-        
+    def start_exercise(self):
+        self.is_exercising = True
+        self.brain.start_exercise()
+
+    def stop_exercise(self):
+        self.is_exercising = False
+        self.brain.stop_exercise()
+
     def step(self) -> float:
         dt = 0.1  # Fixed time step of 0.1 seconds
 
@@ -952,9 +1028,6 @@ class HumanBody:
         self.total_caloric_expenditure += total_energy_expenditure
         
         self.blood.update(dt)
-
-        if self.is_exercising:
-            self.exercise(dt)
         
         return dt
 
@@ -988,22 +1061,6 @@ class HumanBody:
             metrics["Organs"][organ_name] = organ.get_metrics()
         
         return metrics
-
-    def exercise(self, dt: float):
-        self.muscles.energy_demand *= 2
-        self.heart.pumping_rate = min(180, self.heart.pumping_rate * 1.5)
-        self.lungs.respiratory_rate = min(30, self.lungs.respiratory_rate * 1.5)
-        self.blood.epinephrine_amount = min(2000 * (self.blood.volume / 1000), self.blood.epinephrine_amount * 1.5)
-
-    def start_exercise(self):
-        self.is_exercising = True
-
-    def stop_exercise(self):
-        self.is_exercising = False
-        self.muscles.energy_demand /= 2
-        self.heart.pumping_rate = 60
-        self.lungs.respiratory_rate = 12
-        self.blood.epinephrine_amount = 250
 
     def drink(self, water_amount: float):
         self.stomach.receive_water(water_amount)
