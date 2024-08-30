@@ -75,11 +75,7 @@ class Blood:
 
     @property
     def oxygen_saturation(self):
-        return min(1.0, self.oxygen_amount / self.total_oxygen_capacity)
-
-    @property
-    def oxygen_amount(self):
-        return self.total_oxygen_capacity * self.oxygen_saturation
+        return self.oxygen_amount / self.total_oxygen_capacity
 
     def __str__(self) -> str:
         return (
@@ -413,32 +409,19 @@ class Lungs(Organ):
             # No change in gas concentrations during exhalation
             pass
 
-        o2_saturation = self.oxygen_hemoglobin_dissociation(self.alveolar_po2)
-        current_o2_content = self.blood.oxygen_amount
-        max_o2_content = 1.34 * self.blood.hemoglobin
-        o2_diffusion = (max_o2_content * o2_saturation - current_o2_content) * self.diffusion_capacity_o2 * dt / 60
-
-        # Update blood oxygen
-        self.blood.oxygen_amount += o2_diffusion
-
-        # Update alveolar O2
-        self.alveolar_po2 -= (o2_diffusion * 760 / alveolar_volume)
+        # O2 exchange
+        blood_po2 = self.oxygen_hemoglobin_dissociation(self.blood.oxygen_saturation * 100)
+        diffusable_o2 = (self.alveolar_po2 - blood_po2) * self.diffusion_capacity_o2 * dt / 60
+        diffused_o2 = min(diffusable_o2, self.blood.total_oxygen_capacity - self.blood.oxygen_amount)
+        self.blood.oxygen_amount += diffused_o2
+        self.alveolar_po2 -= diffused_o2 * 760 / (22.4 * alveolar_volume / 1000)
 
         # CO2 exchange
-        blood_pco2 = self.blood.co2_concentration * 0.03  # Convert concentration to partial pressure (approximate)
-        co2_gradient = blood_pco2 - self.alveolar_pco2
-        co2_diffusion = self.diffusion_capacity_co2 * co2_gradient * dt / 60
-
-        # Update blood CO2
-        co2_diffusion_mmol = co2_diffusion * 0.0446  # Convert mL to mmol (1 mmol of CO2 = 22.4 mL at STP)
-        self.blood.co2_amount -= co2_diffusion_mmol
-
-        # Update alveolar CO2
-        self.alveolar_pco2 += (co2_diffusion * 760 / alveolar_volume)
-
-        # Ensure alveolar gas pressures stay within physiological limits
-        self.alveolar_po2 = max(60, min(150, self.alveolar_po2))
-        self.alveolar_pco2 = max(35, min(45, self.alveolar_pco2))
+        blood_pco2 = self.blood.co2_concentration / 0.03
+        diffusable_co2 = (blood_pco2 - self.alveolar_pco2) * self.diffusion_capacity_co2 * dt / 60
+        diffused_co2 = max(diffusable_co2, 0)
+        self.blood.co2_amount -= diffused_co2
+        self.alveolar_pco2 += diffused_co2 * 760 / (22.4 * alveolar_volume / 1000)
 
     def oxygen_hemoglobin_dissociation(self, po2: float) -> float:
         return 100 * (po2**2.8) / ((po2**2.8) + 26**2.8)
@@ -804,6 +787,9 @@ class Stomach(Organ):
     def receive_water(self, amount: float):
         self.water_content += amount
 
+    def receive_food(self, amount: float):
+        self.food_content += amount
+
     def set_intestines(self, intestines):
         self.intestines = intestines
 
@@ -1035,7 +1021,8 @@ class HumanBody:
         metrics = {
             "Time": {"value": self.time, "unit": "s"},
             "Energy": {
-                "Total Caloric Expenditure": {"value": self.total_caloric_expenditure, "unit": "kcal"}
+                "Total Caloric Expenditure": {"value": self.total_caloric_expenditure, "unit": "kcal"},
+                "Daily Projected Caloric Expenditure": {"value": self.total_caloric_expenditure * 60 * 60 * 24 / self.time, "unit": "kcal"},
             },
             "Blood": self.blood.get_metrics(),
             "Organs": {}
