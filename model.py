@@ -7,15 +7,15 @@ class Blood:
         volume: float = 5000,  # mL
     ):
         self.volume = volume
-        self.glucose_amount = 4500 * (volume / 5000)  # mg
-        self.fatty_acid_amount = 500 * (volume / 5000)  # mg
+        self.glucose_amount = 4000 * (volume / 5000)  # mg
+        self.fatty_acid_amount = 450 * (volume / 5000)  # mg
         self.amino_acid_amount = 200 * (volume / 5000)  # mg
         self.oxygen_amount = 950.0  # mL O2 (initial amount for 98% saturation)
-        self.co2_amount = 100 * (volume / 5000)  # mmol
-        self.epinephrine_amount = 2.5 * (volume / 5000)  # ng
-        self.nitric_oxide_amount = 4 * (volume / 5000)  # ng
-        self.insulin_amount = 10 * (volume / 5000)  # μU
-        self.glucagon_amount = 3.5 * (volume / 5000)  # ng
+        self.co2_amount = 120 * (volume / 5000)  # mmol
+        self.epinephrine_amount = 0.05 * (volume / 5000)  # ng
+        self.nitric_oxide_amount = 2.5 * (volume / 5000)  # ng
+        self.insulin_amount = 50 * (volume / 5000)  # μU
+        self.glucagon_amount = 0.05 * (volume / 5000)  # ng
         self.nutrient_amount = 0  # mg
         self.bicarbonate_amount = 24 * (volume / 1000)  # mmol
         self.systolic_pressure = 120  # mmHg
@@ -23,7 +23,7 @@ class Blood:
         self.ph = 7.4  # dimensionless
         self.hematocrit = 45  # percentage
         self.hemoglobin = 15  # g/dL
-        self.fat_amount = 500 * (volume / 5000)  # mg
+        self.fat_amount = 400 * (volume / 5000)  # mg
 
     @property
     def glucose_concentration(self):
@@ -239,6 +239,7 @@ class Organ:
 
         # Update blood CO2 concentration
         self.blood.co2_amount += co2_produced_mmol
+        print(f"Produced {co2_produced_mmol} CO2")
         
         # Update blood nutrient levels
         self.blood.glucose_amount -= glucose_consumed
@@ -410,21 +411,22 @@ class Lungs(Organ):
 
         # O2 exchange
         blood_po2 = self.oxygen_hemoglobin_dissociation(self.blood.oxygen_saturation * 100)
-        diffusable_o2 = (self.alveolar_po2 - blood_po2) * self.diffusion_capacity_o2 * dt / 60
+        diffusable_o2 = 0.0446 * (self.alveolar_po2 - blood_po2) * self.diffusion_capacity_o2 * dt / 60
         diffused_o2 = min(max(diffusable_o2, 0), self.blood.total_oxygen_capacity - self.blood.oxygen_amount)
         self.blood.oxygen_amount += diffused_o2
         self.alveolar_po2 -= diffused_o2 * 760 / (22.4 * alveolar_volume / 1000)
 
         # CO2 exchange
         blood_pco2 = self.blood.co2_concentration / 0.03
-        diffusable_co2 = (blood_pco2 - self.alveolar_pco2) * self.diffusion_capacity_co2 * dt / 60
+        diffusable_co2 = 0.0446 * (blood_pco2 - self.alveolar_pco2) * self.diffusion_capacity_co2 * dt / 60
         diffused_co2 = min(max(diffusable_co2, 0), self.blood.co2_amount)
         
         self.blood.co2_amount -= diffused_co2
+        print(f"Diffused {diffused_co2} CO2")
         self.alveolar_pco2 += diffused_co2 * 760 / (22.4 * alveolar_volume / 1000)
 
     def oxygen_hemoglobin_dissociation(self, po2: float) -> float:
-        return 100 * (po2**2.8) / ((po2**2.8) + 26**2.8)
+        return 100 * (po2**2.8) / (po2**2.8 + 26**2.8)
 
     def _organ_specific_metrics(self) -> dict:
         return {
@@ -876,22 +878,22 @@ class Pancreas(Organ):
 
     def produce_hormones(self, dt: float):
         # Insulin production
-        base_insulin_production = 0.5 * dt / 60  # Base production rate
+        base_insulin_production = 0.5 * dt  # μU/min * min = μU
         if self.blood.glucose_concentration > 90:
             glucose_stimulus = (self.blood.glucose_concentration - 90) / 10
-            insulin_produced = (base_insulin_production + self.insulin_production_rate * glucose_stimulus) * dt
-            self.blood.insulin_amount += insulin_produced * (self.blood.volume / 1000)
+            insulin_produced = (base_insulin_production + self.insulin_production_rate * glucose_stimulus * dt)  # μU
+            self.blood.insulin_amount += insulin_produced
         else:
-            self.blood.insulin_amount = max(0, self.blood.insulin_amount - 0.5 * dt)
+            self.blood.insulin_amount = max(0, self.blood.insulin_amount - 0.5 * dt)  # μU
 
         # Glucagon production
-        base_glucagon_production = 0.1 * dt / 60  # Base production rate
+        base_glucagon_production = 0.1 * dt  # ng/min * min = ng
         if self.blood.glucose_concentration < 80:
             glucose_stimulus = (80 - self.blood.glucose_concentration) / 10
-            glucagon_produced = (base_glucagon_production + self.glucagon_production_rate * glucose_stimulus) * dt
+            glucagon_produced = (base_glucagon_production + self.glucagon_production_rate * glucose_stimulus * dt)  # ng
             self.blood.glucagon_amount += glucagon_produced
         else:
-            self.blood.glucagon_amount = max(0, self.blood.glucagon_amount - 0.05 * dt)
+            self.blood.glucagon_amount = max(0, self.blood.glucagon_amount - 0.05 * dt)  # ng
 
     def _organ_specific_metrics(self) -> dict:
         return {
