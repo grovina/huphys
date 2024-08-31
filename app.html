@@ -100,6 +100,10 @@
             padding: 5px;
             font-size: 14px;
         }
+        .out-of-range {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -130,12 +134,21 @@
         var metricsDisplay = document.getElementById("metricsDisplay");
 
         function updateMetricsDisplay(metrics) {
-            function formatMetric(metric) {
+            function formatMetric(metric, key) {
                 if (typeof metric === 'object' && metric.hasOwnProperty('value') && metric.hasOwnProperty('unit')) {
                     const value = typeof metric.value === 'number' ? metric.value.toFixed(2) : metric.value;
-                    return `${value} ${metric.unit}`;
+                    let formattedValue = value;
+                    
+                    if (metric.hasOwnProperty('normal_range')) {
+                        const [min, max] = metric.normal_range;
+                        if (metric.value < min || metric.value > max) {
+                            formattedValue = `<span class="out-of-range">${value}</span>`;
+                        }
+                    }
+                    
+                    return `${key}: ${formattedValue} ${metric.unit}`;
                 }
-                return JSON.stringify(metric);
+                return `${key}: ${JSON.stringify(metric)}`;
             }
 
             function formatMetrics(obj, indent = 0) {
@@ -145,7 +158,7 @@
                     if (typeof value === 'object' && !value.hasOwnProperty('value')) {
                         result += `${indentStr}${key}:\n${formatMetrics(value, indent + 1)}`;
                     } else {
-                        result += `${indentStr}${key}: ${formatMetric(value)}\n`;
+                        result += `${indentStr}${formatMetric(value, key)}\n`;
                     }
                 }
                 return result;

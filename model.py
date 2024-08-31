@@ -96,23 +96,23 @@ class Blood:
 
     def get_metrics(self) -> dict:
         return {
-            "glucose_concentration": {"value": self.glucose_concentration, "unit": "mg/dL"},
-            "systolic_pressure": {"value": self.systolic_pressure, "unit": "mmHg"},
-            "diastolic_pressure": {"value": self.diastolic_pressure, "unit": "mmHg"},
-            "co2_concentration": {"value": self.co2_concentration, "unit": "mmol/L"},
-            "epinephrine_concentration": {"value": self.epinephrine_concentration, "unit": "ng/mL"},
-            "nitric_oxide_concentration": {"value": self.nitric_oxide_concentration, "unit": "ng/mL"},
-            "ph": {"value": self.ph, "unit": ""},
-            "hematocrit": {"value": self.hematocrit, "unit": "%"},
-            "plasma_volume": {"value": self.plasma_volume, "unit": "mL"},
-            "volume": {"value": self.volume, "unit": "mL"},
-            "insulin_concentration": {"value": self.insulin_concentration, "unit": "μU/mL"},
-            "glucagon_concentration": {"value": self.glucagon_concentration, "unit": "ng/mL"},
-            "hemoglobin": {"value": self.hemoglobin, "unit": "g/dL"},
-            "oxygen_amount": {"value": self.oxygen_amount, "unit": "mL O2"},
-            "oxygen_saturation": {"value": self.oxygen_saturation, "unit": ""},
-            "bicarbonate_concentration": {"value": self.bicarbonate_concentration, "unit": "mmol/L"},
-            "fat_concentration": {"value": self.fat_concentration, "unit": "mg/dL"},
+            "glucose_concentration": {"value": self.glucose_concentration, "unit": "mg/dL", "normal_range": (70, 100)},
+            "systolic_pressure": {"value": self.systolic_pressure, "unit": "mmHg", "normal_range": (90, 120)},
+            "diastolic_pressure": {"value": self.diastolic_pressure, "unit": "mmHg", "normal_range": (60, 80)},
+            "co2_concentration": {"value": self.co2_concentration, "unit": "mmol/L", "normal_range": (23, 29)},
+            "epinephrine_concentration": {"value": self.epinephrine_concentration, "unit": "ng/mL", "normal_range": (0, 0.1)},
+            "nitric_oxide_concentration": {"value": self.nitric_oxide_concentration, "unit": "ng/mL", "normal_range": (0.01, 0.1)},
+            "ph": {"value": self.ph, "unit": "", "normal_range": (7.35, 7.45)},
+            "hematocrit": {"value": self.hematocrit, "unit": "%", "normal_range": (37, 52)},
+            "plasma_volume": {"value": self.plasma_volume, "unit": "mL", "normal_range": (2700, 3300)},
+            "volume": {"value": self.volume, "unit": "mL", "normal_range": (4500, 5500)},
+            "insulin_concentration": {"value": self.insulin_concentration, "unit": "μU/mL", "normal_range": (2, 25)},
+            "glucagon_concentration": {"value": self.glucagon_concentration, "unit": "ng/mL", "normal_range": (50, 150)},
+            "hemoglobin": {"value": self.hemoglobin, "unit": "g/dL", "normal_range": (12, 16)},
+            "oxygen_amount": {"value": self.oxygen_amount, "unit": "mL O2", "normal_range": (850, 1000)},
+            "oxygen_saturation": {"value": self.oxygen_saturation, "unit": "", "normal_range": (0.95, 1.0)},
+            "bicarbonate_concentration": {"value": self.bicarbonate_concentration, "unit": "mmol/L", "normal_range": (22, 26)},
+            "fat_concentration": {"value": self.fat_concentration, "unit": "mg/dL", "normal_range": (10, 250)},
         }
 
     def update(self, dt: float):
@@ -168,9 +168,9 @@ class Organ:
 
     def get_metrics(self) -> dict:
         metrics = {
-            "energy_demand": {"value": self.energy_demand, "unit": "kcal/hour"},
-            "oxygen_demand": {"value": self.oxygen_demand, "unit": "mL O2/min"},
-            "insulin_sensitivity": {"value": self.insulin_sensitivity, "unit": ""},
+            "energy_demand": {"value": self.energy_demand, "unit": "kcal/hour", "normal_range": (0, 100)},
+            "oxygen_demand": {"value": self.oxygen_demand, "unit": "mL O2/min", "normal_range": (0, 50)},
+            "insulin_sensitivity": {"value": self.insulin_sensitivity, "unit": "", "normal_range": (0.5, 2.0)},
         }
         metrics.update(self._organ_specific_metrics())
         return metrics
@@ -343,14 +343,14 @@ class Heart(Organ):
     def _organ_specific_metrics(self) -> dict:
         metrics = super()._organ_specific_metrics()
         metrics.update({
-            "pumping_rate": {"value": self.pumping_rate, "unit": "beats/min"},
-            "cardiac_output": {"value": self.cardiac_output, "unit": "L/min"},
-            "ejection_fraction": {"value": self.ejection_fraction, "unit": ""},
-            "stroke_volume": {"value": self.stroke_volume, "unit": "mL/beat"},
-            "systolic_pressure": {"value": self.blood.systolic_pressure, "unit": "mmHg"},
-            "diastolic_pressure": {"value": self.blood.diastolic_pressure, "unit": "mmHg"},
-            "peripheral_resistance": {"value": self.peripheral_resistance, "unit": "dyn·s/cm^5"},
-            "compression": {"value": self.compression, "unit": ""},
+            "pumping_rate": {"value": self.pumping_rate, "unit": "beats/min", "normal_range": (60, 100)},
+            "cardiac_output": {"value": self.cardiac_output, "unit": "L/min", "normal_range": (4, 8)},
+            "ejection_fraction": {"value": self.ejection_fraction, "unit": "", "normal_range": (0.5, 0.7)},
+            "stroke_volume": {"value": self.stroke_volume, "unit": "mL/beat", "normal_range": (60, 100)},
+            "systolic_pressure": {"value": self.blood.systolic_pressure, "unit": "mmHg", "normal_range": (90, 120)},
+            "diastolic_pressure": {"value": self.blood.diastolic_pressure, "unit": "mmHg", "normal_range": (60, 80)},
+            "peripheral_resistance": {"value": self.peripheral_resistance, "unit": "dyn·s/cm^5", "normal_range": (900, 1500)},
+            "compression": {"value": self.compression, "unit": "", "normal_range": (0, 1)},
         })
         return metrics
 
@@ -428,14 +428,14 @@ class Lungs(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "tidal_volume": {"value": self.tidal_volume, "unit": "mL"},
-            "respiratory_rate": {"value": self.respiratory_rate, "unit": "breaths/min"},
-            "alveolar_po2": {"value": self.alveolar_po2, "unit": "mmHg"},
-            "alveolar_pco2": {"value": self.alveolar_pco2, "unit": "mmHg"},
-            "expansion": {"value": self.expansion, "unit": ""},
-            "alveolar_volume": {"value": self.functional_residual_capacity + (self.tidal_volume * self.expansion), "unit": "mL"},
-            "minute_ventilation": {"value": self.tidal_volume * self.respiratory_rate / 1000, "unit": "L/min"},
-            "alveolar_ventilation": {"value": (self.tidal_volume - self.dead_space_volume) * self.respiratory_rate / 1000, "unit": "L/min"}
+            "tidal_volume": {"value": self.tidal_volume, "unit": "mL", "normal_range": (400, 600)},
+            "respiratory_rate": {"value": self.respiratory_rate, "unit": "breaths/min", "normal_range": (12, 20)},
+            "alveolar_po2": {"value": self.alveolar_po2, "unit": "mmHg", "normal_range": (95, 105)},
+            "alveolar_pco2": {"value": self.alveolar_pco2, "unit": "mmHg", "normal_range": (35, 45)},
+            "expansion": {"value": self.expansion, "unit": "", "normal_range": (0, 1)},
+            "alveolar_volume": {"value": self.functional_residual_capacity + (self.tidal_volume * self.expansion), "unit": "mL", "normal_range": (2000, 3000)},
+            "minute_ventilation": {"value": self.tidal_volume * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (5, 8)},
+            "alveolar_ventilation": {"value": (self.tidal_volume - self.dead_space_volume) * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (4, 6)}
         }
 
 
@@ -514,8 +514,8 @@ class Kidneys(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "waste_filtering_rate": {"value": self.waste_filtering_rate, "unit": ""},
-            "urine_production_rate": {"value": self.urine_production_rate, "unit": "mL/s"}
+            "waste_filtering_rate": {"value": self.waste_filtering_rate, "unit": "", "normal_range": (0.05, 0.15)},
+            "urine_production_rate": {"value": self.urine_production_rate, "unit": "mL/s", "normal_range": (0.5, 2)}
         }
 
 
@@ -553,9 +553,9 @@ class Muscle(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "glucose_uptake_rate": {"value": self.glucose_uptake_rate, "unit": "mg/min"},
-            "glycogen_storage": {"value": self.glycogen_storage, "unit": "g"},
-            "energy_demand": {"value": self.energy_demand, "unit": "kcal/hour"}
+            "glucose_uptake_rate": {"value": self.glucose_uptake_rate, "unit": "mg/min", "normal_range": (2, 20)},
+            "glycogen_storage": {"value": self.glycogen_storage, "unit": "g", "normal_range": (200, 800)},
+            "energy_demand": {"value": self.energy_demand, "unit": "kcal/hour", "normal_range": (30, 100)}
         }
 
 
@@ -656,7 +656,7 @@ class Brain(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "baroreceptor_sensitivity": {"value": self.baroreceptor_sensitivity, "unit": ""},
+            "baroreceptor_sensitivity": {"value": self.baroreceptor_sensitivity, "unit": "", "normal_range": (0.5, 1.5)},
         }
 
 
@@ -692,10 +692,10 @@ class Fat(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "fat_reserve": {"value": self.fat_reserve, "unit": "g"},
-            "insulin_sensitivity": {"value": self.insulin_sensitivity, "unit": ""},
-            "glucagon_sensitivity": {"value": self.glucagon_sensitivity, "unit": ""},
-            "lipolysis_rate": {"value": self.lipolysis_rate, "unit": "g/min"},
+            "fat_reserve": {"value": self.fat_reserve, "unit": "g", "normal_range": (5000, 20000)},
+            "insulin_sensitivity": {"value": self.insulin_sensitivity, "unit": "", "normal_range": (1.0, 3.0)},
+            "glucagon_sensitivity": {"value": self.glucagon_sensitivity, "unit": "", "normal_range": (0.5, 1.5)},
+            "lipolysis_rate": {"value": self.lipolysis_rate, "unit": "g/min", "normal_range": (0.05, 0.2)},
         }
 
 
@@ -752,7 +752,7 @@ class Liver(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "glucose_storage": {"value": self.glucose_storage, "unit": "g"},
+            "glucose_storage": {"value": self.glucose_storage, "unit": "g", "normal_range": (50, 200)},
         }
 
 
@@ -791,9 +791,9 @@ class Stomach(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "digestion_rate": {"value": self.digestion_rate, "unit": ""},
-            "food_content": {"value": self.food_content, "unit": "mg"},
-            "water_content": {"value": self.water_content, "unit": "mL"}
+            "digestion_rate": {"value": self.digestion_rate, "unit": "", "normal_range": (0.05, 0.2)},
+            "food_content": {"value": self.food_content, "unit": "mg", "normal_range": (0, 1000)},
+            "water_content": {"value": self.water_content, "unit": "mL", "normal_range": (0, 500)}
         }
 
 
@@ -834,9 +834,9 @@ class Intestines(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "absorption_rate": {"value": self.absorption_rate, "unit": ""},
-            "available_nutrients": {"value": self.available_nutrients, "unit": "mg"},
-            "water_content": {"value": self.water_content, "unit": "mL"}
+            "absorption_rate": {"value": self.absorption_rate, "unit": "", "normal_range": (0.1, 0.3)},
+            "available_nutrients": {"value": self.available_nutrients, "unit": "mg", "normal_range": (0, 1000)},
+            "water_content": {"value": self.water_content, "unit": "mL", "normal_range": (0, 500)}
         }
 
 
@@ -858,7 +858,7 @@ class Skin(Organ):
             self.temperature += 0.1 * dt
 
     def _organ_specific_metrics(self) -> dict:
-        return {"temperature": {"value": self.temperature, "unit": "°C"}}
+        return {"temperature": {"value": self.temperature, "unit": "°C", "normal_range": (36.5, 37.5)}}
 
 
 class Pancreas(Organ):
@@ -895,8 +895,8 @@ class Pancreas(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "insulin_production_rate": {"value": self.insulin_production_rate, "unit": "μU/mL/min"},
-            "glucagon_production_rate": {"value": self.glucagon_production_rate, "unit": "ng/mL/min"},
+            "insulin_production_rate": {"value": self.insulin_production_rate, "unit": "μU/mL/min", "normal_range": (0.3, 0.7)},
+            "glucagon_production_rate": {"value": self.glucagon_production_rate, "unit": "ng/mL/min", "normal_range": (0.05, 0.15)},
         }
 
 
@@ -915,7 +915,7 @@ class Spleen(Organ):
         pass
 
     def _organ_specific_metrics(self) -> dict:
-        return {"blood_storage": {"value": self.blood_storage, "unit": "mL"}}
+        return {"blood_storage": {"value": self.blood_storage, "unit": "mL", "normal_range": (100, 300)}}
 
 
 class Bladder(Organ):
@@ -942,8 +942,8 @@ class Bladder(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "urine_volume": {"value": self.urine_volume, "unit": "mL"},
-            "fullness_percentage": {"value": (self.urine_volume / self.max_capacity) * 100, "unit": "%"}
+            "urine_volume": {"value": self.urine_volume, "unit": "mL", "normal_range": (0, self.max_capacity)},
+            "fullness_percentage": {"value": (self.urine_volume / self.max_capacity) * 100, "unit": "%", "normal_range": (0, 100)}
         }
 
 
