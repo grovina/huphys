@@ -10,14 +10,14 @@ class Blood:
         self.glucose_amount = 4500 * (volume / 5000)  # mg
         self.fatty_acid_amount = 500 * (volume / 5000)  # mg
         self.amino_acid_amount = 200 * (volume / 5000)  # mg
-        self.oxygen_amount = 950  # mL O2 (initial amount for 98% saturation)
+        self.oxygen_amount = 950.0  # mL O2 (initial amount for 98% saturation)
         self.co2_amount = 100 * (volume / 5000)  # mmol
         self.epinephrine_amount = 2.5 * (volume / 5000)  # ng
         self.nitric_oxide_amount = 4 * (volume / 5000)  # ng
         self.insulin_amount = 10 * (volume / 5000)  # μU
         self.glucagon_amount = 3.5 * (volume / 5000)  # ng
         self.nutrient_amount = 0  # mg
-        self.bicarbonate_amount = 120000 * (volume / 5000)  # mEq
+        self.bicarbonate_amount = 24 * (volume / 1000)  # mmol
         self.systolic_pressure = 120  # mmHg
         self.diastolic_pressure = 80  # mmHg
         self.ph = 7.4  # dimensionless
@@ -55,7 +55,7 @@ class Blood:
 
     @property
     def bicarbonate_concentration(self):
-        return self.bicarbonate_amount / (self.volume / 1000)  # mEq/L
+        return self.bicarbonate_amount / (self.volume / 1000)  # mmol/L
 
     @property
     def plasma_volume(self):
@@ -111,17 +111,17 @@ class Blood:
             "hemoglobin": {"value": self.hemoglobin, "unit": "g/dL"},
             "oxygen_amount": {"value": self.oxygen_amount, "unit": "mL O2"},
             "oxygen_saturation": {"value": self.oxygen_saturation, "unit": ""},
-            "bicarbonate_concentration": {"value": self.bicarbonate_concentration, "unit": "mEq/L"},
+            "bicarbonate_concentration": {"value": self.bicarbonate_concentration, "unit": "mmol/L"},
             "fat_concentration": {"value": self.fat_concentration, "unit": "mg/dL"},
         }
 
     def update(self, dt: float):
         # Calculate pCO2 from CO2 concentration
         k = 0.03  # Henry's constant for CO2 in mmol/L/mmHg
-        pCO2 = self.co2_concentration / k
+        pCO2 = max(self.co2_concentration / k, 1e-6)  # Ensure pCO2 is not zero
         
         # Calculate new pH using Henderson-Hasselbalch equation
-        new_ph = 6.1 + math.log10(self.bicarbonate_concentration / (0.03 * pCO2))
+        new_ph = 6.1 + math.log10(max(self.bicarbonate_concentration, 1e-6) / (0.03 * pCO2))
         
         # Simulate buffer systems
         buffer_capacity = 0.1  # Represents the overall buffer capacity of blood
@@ -131,11 +131,8 @@ class Blood:
         self.ph += ph_change * dt / 60  # Adjust for dt in seconds
         
         # Adjust bicarbonate content based on pH change
-        self.bicarbonate_amount += ph_change * 10 * dt / 60 * (self.volume / 1000)  # Adjust for dt in seconds
-        
-        # Ensure pH and bicarbonate stay within physiological limits
-        self.ph = max(6.8, min(7.8, self.ph))
-        self.bicarbonate_amount = max(15000, min(35000, self.bicarbonate_amount))
+        bicarbonate_change = ph_change * 0.5 * dt / 60 * (self.volume / 1000)
+        self.bicarbonate_amount += max(bicarbonate_change, -self.bicarbonate_amount)
 
 
 class Nerve:
@@ -237,6 +234,12 @@ class Organ:
         # Calculate CO2 production based on oxygen consumption and RQ
         co2_produced = oxygen_consumed * rq  # mL CO2
         
+        # Convert CO2 from mL to mmol (assuming standard temperature and pressure)
+        co2_produced_mmol = co2_produced * 0.0446  # 1 mL CO2 = 0.0446 mmol at STP
+
+        # Update blood CO2 concentration
+        self.blood.co2_amount += co2_produced_mmol
+        
         # Update blood nutrient levels
         self.blood.glucose_amount -= glucose_consumed
         self.blood.fatty_acid_amount -= fatty_acid_consumed
@@ -244,10 +247,6 @@ class Organ:
         
         # Update blood oxygen levels
         self.blood.oxygen_amount -= oxygen_consumed
-        
-        # Update blood CO2 concentration
-        co2_produced_mmol = co2_produced * 0.0308  # Convert mL CO2 to mmol
-        self.blood.co2_amount += co2_produced_mmol
 
     def process_insulin(self, dt: float) -> None:
         insulin_effect = self.blood.insulin_concentration * self.insulin_sensitivity
@@ -412,14 +411,15 @@ class Lungs(Organ):
         # O2 exchange
         blood_po2 = self.oxygen_hemoglobin_dissociation(self.blood.oxygen_saturation * 100)
         diffusable_o2 = (self.alveolar_po2 - blood_po2) * self.diffusion_capacity_o2 * dt / 60
-        diffused_o2 = min(diffusable_o2, self.blood.total_oxygen_capacity - self.blood.oxygen_amount)
+        diffused_o2 = min(max(diffusable_o2, 0), self.blood.total_oxygen_capacity - self.blood.oxygen_amount)
         self.blood.oxygen_amount += diffused_o2
         self.alveolar_po2 -= diffused_o2 * 760 / (22.4 * alveolar_volume / 1000)
 
         # CO2 exchange
         blood_pco2 = self.blood.co2_concentration / 0.03
         diffusable_co2 = (blood_pco2 - self.alveolar_pco2) * self.diffusion_capacity_co2 * dt / 60
-        diffused_co2 = max(diffusable_co2, 0)
+        diffused_co2 = min(max(diffusable_co2, 0), self.blood.co2_amount)
+        
         self.blood.co2_amount -= diffused_co2
         self.alveolar_pco2 += diffused_co2 * 760 / (22.4 * alveolar_volume / 1000)
 
@@ -473,14 +473,13 @@ class Kidneys(Organ):
 
     def regulate_blood_ph(self, dt: float):
         target_ph = 7.4
-        current_ph = self.blood.ph
-        ph_difference = current_ph - target_ph
+        ph_difference =  self.blood.ph - target_ph
 
         # Adjust bicarbonate reabsorption based on pH
         if ph_difference < -0.05:  # Acidosis
-            bicarbonate_change = 0.2 * dt * (self.blood.volume / 1000)
+            bicarbonate_change = 0.2 * dt
         elif ph_difference > 0.05:  # Alkalosis
-            bicarbonate_change = -0.2 * dt * (self.blood.volume / 1000)
+            bicarbonate_change = -0.2 * dt
         else:
             bicarbonate_change = 0
 
@@ -495,9 +494,6 @@ class Kidneys(Organ):
 
         # Update blood pH based on hydrogen ion excretion
         self.blood.ph += h_ion_excretion
-
-        # Ensure pH stays within physiological limits
-        self.blood.ph = max(6.8, min(7.8, self.blood.ph))
 
         # Adjust urine production based on pH
         if ph_difference < -0.1:
