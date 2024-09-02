@@ -24,7 +24,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 dt = model.step()
                 metrics = model.get_metrics()
                 await websocket.send_json(metrics)
-                await asyncio.sleep(dt+5)
+                await asyncio.sleep(dt)
             except asyncio.CancelledError:
                 break
             except websockets.WebSocketDisconnect:
