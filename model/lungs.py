@@ -44,11 +44,11 @@ class Lungs(Organ):
 
         # Fresh air composition when it comes to alveoli
         fresh_o2 = 104  # mmHg
-        fresh_co2 = 35  # mmHg
+        fresh_co2 = 36  # mmHg
 
         if volume_delta > 0:  # Inhaling
             # Mix fresh air with existing alveolar air
-            fresh_fraction = volume_delta / self.alveolar_volume
+            fresh_fraction = 0.8 * volume_delta / self.alveolar_volume
             self.alveolar_po2 = (1 - fresh_fraction) * self.alveolar_po2 + fresh_fraction * fresh_o2
             self.alveolar_pco2 = (1 - fresh_fraction) * self.alveolar_pco2 + fresh_fraction * fresh_co2
         else:  # Exhaling

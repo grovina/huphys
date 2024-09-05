@@ -78,9 +78,9 @@ class Brain(Organ):
 
         # Update epinephrine level
         if map_error < -5:
-            self.blood.epinephrine_amount *= 1 + 0.1 * dt
+            self.blood.epinephrine_amount *= 1 + 0.01 * dt
         elif map_error > 5:
-            self.blood.epinephrine_amount *= 1 - 0.1 * dt
+            self.blood.epinephrine_amount *= 1 - 0.01 * dt
 
         # Adjust urine production signal
         if map_error > 5:
@@ -96,25 +96,22 @@ class Brain(Organ):
 
     def _regulate_respiratory_rate(self, dt: float):
         if self.lungs:
-            if self.blood.co2_concentration > 1.5:  # mmol/L
-                self.lungs.respiratory_rate = self.lungs.respiratory_rate + 0.5 * dt
-            elif self.blood.co2_concentration < 1.1:  # mmol/L
-                self.lungs.respiratory_rate = max(self.lungs.respiratory_rate - 0.5 * dt, 1e-6)
+            if self.blood.pco2 > 41:  # mmHg
+                self.lungs.respiratory_rate = self.lungs.respiratory_rate + 0.1 * dt
+            elif self.blood.pco2 < 40:  # mmHg
+                self.lungs.respiratory_rate = max(self.lungs.respiratory_rate - 0.1 * dt, 1e-6)
             else:
                 # Gradually return to normal respiratory rate
                 normal_rate = 12
-                if self.lungs.respiratory_rate > normal_rate:
-                    self.lungs.respiratory_rate = max(self.lungs.respiratory_rate - 0.1 * dt, 1e-6)
-                elif self.lungs.respiratory_rate < normal_rate:
-                    self.lungs.respiratory_rate = self.lungs.respiratory_rate + 0.1 * dt
+                self.lungs.respiratory_rate += (normal_rate - self.lungs.respiratory_rate) * 0.1 * dt
 
     def _regulate_glucose(self, dt: float):
-        if self.blood.glucose_concentration < 60:
+        if self.blood.glucose_concentration < 72:
             # Stimulate glucagon release
-            self.blood.glucagon_amount += 0.1 * dt * (self.blood.volume / 1000)
+            self.blood.glucagon_amount += 0.01 * dt * (self.blood.volume / 1000)
             # Increase epinephrine to stimulate glucose release
-            self.blood.epinephrine_amount *= 1 + 0.1 * dt
-        elif self.blood.glucose_concentration > 140:
+            self.blood.epinephrine_amount *= 1 + 0.01 * dt
+        elif self.blood.glucose_concentration > 130:
             # Stimulate insulin release
             self.blood.insulin_amount += 0.1 * dt * (self.blood.volume / 1000)
 
@@ -136,7 +133,7 @@ class Brain(Organ):
 
     def start_exercise(self):
         if self.muscles:
-            self.muscles.increase_energy_demand(2)  # Double the energy demand
+            self.muscles.increase_energy_demand(3)
 
     def stop_exercise(self):
         if self.muscles:

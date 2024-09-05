@@ -72,8 +72,8 @@ class Liver(Organ):
             self.glucose_storage += glucose_stored / 1000  # Convert mg to g
 
         # Glycogen breakdown (glycogenolysis)
-        elif self.blood.glucose_concentration < 70 and self.glucose_storage > 0:
-            glucose_released = min(70 - self.blood.glucose_concentration, self.glucose_storage * 1000, 10 * glucagon_effect * dt)
+        elif self.blood.glucose_concentration < 72 and self.glucose_storage > 0:
+            glucose_released = min(72 - self.blood.glucose_concentration, self.glucose_storage * 1000, 10 * glucagon_effect * dt)
             self.blood.glucose_amount += glucose_released
             self.glucose_storage -= glucose_released / 1000  # Convert mg to g
 
@@ -90,7 +90,7 @@ class Liver(Organ):
 
     def _regulate_blood_ph(self, dt: float):
         # Simulate ammonia production
-        ammonia_production = 0.1 * dt
+        ammonia_production = 0.01 * dt
         
         # Convert ammonia to urea (which is less acidic)
         urea_production = ammonia_production * 0.8

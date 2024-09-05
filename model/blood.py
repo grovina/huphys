@@ -144,6 +144,11 @@ class Blood:
     def active_vitamin_d_concentration(self):
         return self.active_vitamin_d_amount / (self.volume / 1000)  # ng/mL
 
+    @property
+    def pco2(self):
+        k = 0.03  # Henry's constant for CO2 in mmol/L/mmHg
+        return max(self.co2_concentration / k, 1e-6)  # Ensure pCO2 is not zero
+
     def get_metrics(self) -> dict:
         return {
             "glucose_concentration": {"value": self.glucose_concentration, "unit": "mg/dL", "normal_range": (70, 140)},
@@ -178,16 +183,13 @@ class Blood:
             "erythropoietin_concentration": {"value": self.erythropoietin_concentration, "unit": "mIU/mL", "normal_range": (4, 20)},
             "inactive_vitamin_d_concentration": {"value": self.inactive_vitamin_d_concentration, "unit": "ng/mL", "normal_range": (20, 50)},
             "active_vitamin_d_concentration": {"value": self.active_vitamin_d_concentration, "unit": "ng/mL", "normal_range": (20, 50)},
+            "pco2": {"value": self.pco2, "unit": "mmHg", "normal_range": (35, 45)},
         }
 
     def update(self, dt: float):
-        self._update_pco2()
         self._update_ph(dt)
         self._update_bicarbonate(dt)
-
-    def _update_pco2(self):
-        k = 0.03  # Henry's constant for CO2 in mmol/L/mmHg
-        self.pco2 = max(self.co2_concentration / k, 1e-6)  # Ensure pCO2 is not zero
+        self._degrade_hormones(dt)
 
     def _update_ph(self, dt: float):
         new_ph = 6.1 + math.log10(max(self.bicarbonate_concentration, 1e-6) / (0.03 * self.pco2))
@@ -199,8 +201,8 @@ class Blood:
         bicarbonate_change = (self.ph - 7.4) * 0.5 * dt / 60 * (self.volume / 1000)
         self.bicarbonate_amount = max(self.bicarbonate_amount + bicarbonate_change, 0)
 
-    def degrade_hormones(self, dt: float):
-        degradation_rate = 0.01  # 10% degradation per minute
+    def _degrade_hormones(self, dt: float):
+        degradation_rate = 0.01  # 1% degradation per minute
         self.insulin_amount *= (1 - degradation_rate * dt / 60)
         self.glucagon_amount *= (1 - degradation_rate * dt / 60)
         self.epinephrine_amount *= (1 - degradation_rate * dt / 60)
