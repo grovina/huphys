@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, websockets
 from fastapi.responses import HTMLResponse
 
-from model import HumanBody
+from model.body import HumanBody
 
 app = FastAPI()
 
