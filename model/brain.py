@@ -18,6 +18,7 @@ class Brain(Organ):
         self.kidneys = None  # Will be set by the HumanBody class
         self.muscles = None  # Will be set by the HumanBody class
         self.urine_production_signal = 0  # New attribute to signal kidneys
+        self.respiratory_rate_signal = 0  # New attribute to signal lungs
 
     def _organ_specific_processing(self, dt: float) -> None:
         self._regulate_blood_pressure(dt)
@@ -71,11 +72,6 @@ class Brain(Organ):
         if self.heart:
             self.heart.receive_brain_signal(-baroreceptor_response)
 
-        # Adjust peripheral resistance
-        resistance_change = max(-0.1, min(0.1, baroreceptor_response * 0.5))
-        if self.heart:
-            self.heart.peripheral_resistance *= (1 + resistance_change * dt)
-
         # Update epinephrine level
         if map_error < -5:
             self.blood.epinephrine_amount *= 1 + 0.01 * dt
@@ -96,21 +92,26 @@ class Brain(Organ):
 
     def _regulate_respiratory_rate(self, dt: float):
         if self.lungs:
-            if self.blood.pco2 > 41:  # mmHg
-                self.lungs.respiratory_rate = self.lungs.respiratory_rate + 0.1 * dt
-            elif self.blood.pco2 < 40:  # mmHg
-                self.lungs.respiratory_rate = max(self.lungs.respiratory_rate - 0.1 * dt, 1e-6)
+            target_pco2 = 40  # mmHg
+            pco2_error = self.blood.pco2 - target_pco2
+
+            # Adjust respiratory rate signal
+            if pco2_error > 0.02:
+                self.respiratory_rate_signal = min(1, self.respiratory_rate_signal + 0.02 * dt)
+            elif pco2_error < -0.02:
+                self.respiratory_rate_signal = max(-1, self.respiratory_rate_signal - 0.02 * dt)
             else:
-                # Gradually return to normal respiratory rate
-                normal_rate = 12
-                self.lungs.respiratory_rate += (normal_rate - self.lungs.respiratory_rate) * 0.1 * dt
+                self.respiratory_rate_signal *= 0.9  # Gradually return to neutral
+
+            # Send signal to lungs
+            self.lungs.receive_brain_signal(self.respiratory_rate_signal)
 
     def _regulate_glucose(self, dt: float):
         if self.blood.glucose_concentration < 72:
             # Stimulate glucagon release
             self.blood.glucagon_amount += 0.01 * dt * (self.blood.volume / 1000)
             # Increase epinephrine to stimulate glucose release
-            self.blood.epinephrine_amount *= 1 + 0.01 * dt
+            self.blood.epinephrine_amount *= 1 + 0.001 * dt
         elif self.blood.glucose_concentration > 130:
             # Stimulate insulin release
             self.blood.insulin_amount += 0.1 * dt * (self.blood.volume / 1000)
@@ -141,4 +142,6 @@ class Brain(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
+            "urine_production_signal": {"value": self.urine_production_signal, "unit": "", "normal_range": (-1, 1)},
+            "respiratory_rate_signal": {"value": self.respiratory_rate_signal, "unit": "", "normal_range": (-1, 1)}
         }

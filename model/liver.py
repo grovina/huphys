@@ -18,7 +18,7 @@ class Liver(Organ):
 
     def _organ_specific_processing(self, dt: float) -> None:
         self._regulate_glucose(dt)
-        self._regulate_blood_ph(dt)
+        self._regulate_urea_ammonia(dt)
         self._regulate_bile_production(dt)
         self._synthesize_proteins(dt)
         self._detoxify_substances(dt)
@@ -28,6 +28,7 @@ class Liver(Organ):
         self._regulate_blood_clotting(dt)
         self._produce_immune_factors(dt)
         self._regulate_hormone_levels(dt)
+        self._degrade_hormones(dt)
 
     def _synthesize_proteins(self, dt: float):
         # Placeholder for protein synthesis function
@@ -88,22 +89,34 @@ class Liver(Organ):
             self.blood.glucose_amount += glucose_exported
             self.glucose_storage -= glucose_exported / 1000
 
-    def _regulate_blood_ph(self, dt: float):
+    def _regulate_urea_ammonia(self, dt: float):
         # Simulate ammonia production
         ammonia_production = 0.01 * dt
         
-        # Convert ammonia to urea (which is less acidic)
+        # Convert ammonia to urea
         urea_production = ammonia_production * 0.8
         
-        # Adjust blood pH based on urea production
-        ph_change = urea_production * 0.01
-        self.blood.ph += ph_change
+        # Remove ammonia from blood and add urea
+        self.blood.ammonia_amount = max(0, self.blood.ammonia_amount - ammonia_production)
+        self.blood.urea_amount += urea_production
 
     def _regulate_bile_production(self, dt: float):
         if self.blood.secretin_concentration > 1.0:
             bile_production = 0.1 * dt  # Increase bile production
             if self.gall_bladder:
                 self.gall_bladder.store_bile(bile_production)
+
+    def _degrade_hormones(self, dt: float):
+        degradation_rate = 0.01 / 60  # 1% degradation per minute
+        self.blood.insulin_amount *= (1 - degradation_rate * dt)
+        self.blood.glucagon_amount *= (1 - degradation_rate * dt)
+        self.blood.epinephrine_amount *= (1 - degradation_rate * dt)
+        self.blood.gastrin_amount *= (1 - degradation_rate * dt)
+        self.blood.ghrelin_amount *= (1 - degradation_rate * dt)
+        self.blood.cholecystokinin_amount *= (1 - degradation_rate * dt)
+        self.blood.secretin_amount *= (1 - degradation_rate * dt)
+        self.blood.renin_amount *= (1 - degradation_rate * dt)
+        self.blood.erythropoietin_amount *= (1 - degradation_rate * dt)
 
     def _organ_specific_metrics(self) -> dict:
         return {

@@ -48,7 +48,7 @@ class Lungs(Organ):
 
         if volume_delta > 0:  # Inhaling
             # Mix fresh air with existing alveolar air
-            fresh_fraction = 0.8 * volume_delta / self.alveolar_volume
+            fresh_fraction = volume_delta / self.alveolar_volume
             self.alveolar_po2 = (1 - fresh_fraction) * self.alveolar_po2 + fresh_fraction * fresh_o2
             self.alveolar_pco2 = (1 - fresh_fraction) * self.alveolar_pco2 + fresh_fraction * fresh_co2
         else:  # Exhaling
@@ -87,3 +87,16 @@ class Lungs(Organ):
             "minute_ventilation": {"value": self.tidal_volume * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (5, 8)},
             "alveolar_ventilation": {"value": (self.tidal_volume - self.dead_space_volume) * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (4, 6)}
         }
+
+    def receive_brain_signal(self, signal: float):
+        # Adjust respiratory rate based on brain signal
+        self.respiratory_rate = 12 * (1 + signal * 0.6)
+        
+        # Adjust tidal volume inversely
+        extra_tidal_volume = 500 * signal * 0.1
+        self.tidal_volume = 500 - extra_tidal_volume
+        self.functional_residual_capacity = 2500 + extra_tidal_volume
+        
+        # Ensure rates stay within physiological limits
+        self.respiratory_rate = max(8, min(30, self.respiratory_rate))
+        self.tidal_volume = max(300, min(800, self.tidal_volume))

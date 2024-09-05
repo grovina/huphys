@@ -40,7 +40,12 @@ class Fat(Organ):
             lipolysis_factor = max(1, (80 - self.blood.glucose_concentration) / 10)
             fat_released = min(self.lipolysis_rate * lipolysis_factor * dt / 60, self.fat_reserve)
             self.fat_reserve -= fat_released
-            self.blood.triglyceride_amount += fat_released * 1000  # Convert g to mg
+            
+            # Convert released fat to triglycerides and break down some triglycerides into fatty acids
+            triglycerides_released = fat_released * 1000  # Convert g to mg
+            fatty_acids_released = triglycerides_released * 0.1  # 10% of triglycerides break down
+            self.blood.fatty_acid_amount += fatty_acids_released
+            self.blood.triglyceride_amount += triglycerides_released - fatty_acids_released
 
     def _organ_specific_metrics(self) -> dict:
         return {

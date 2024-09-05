@@ -35,10 +35,19 @@ class Blood:
         self.erythropoietin_amount: float = 5 * (volume / 1000)  # mIU
         self.inactive_vitamin_d_amount: float = 30 * (volume / 1000)  # ng
         self.active_vitamin_d_amount: float = 30 * (volume / 1000)  # ng
+        self.ammonia_amount: float = 50 * (volume / 1000)  # μg
 
     @property
     def glucose_concentration(self):
         return self.glucose_amount / (self.volume / 100)  # mg/dL
+
+    @property
+    def fatty_acid_concentration(self):
+        return self.fatty_acid_amount / (self.volume / 1000)  # mg/L
+
+    @property
+    def amino_acid_concentration(self):
+        return self.amino_acid_amount / (self.volume / 1000)  # mg/L
 
     @property
     def co2_concentration(self):
@@ -149,9 +158,15 @@ class Blood:
         k = 0.03  # Henry's constant for CO2 in mmol/L/mmHg
         return max(self.co2_concentration / k, 1e-6)  # Ensure pCO2 is not zero
 
+    @property
+    def ammonia_concentration(self):
+        return self.ammonia_amount / (self.volume / 1000)  # μg/L
+
     def get_metrics(self) -> dict:
-        return {
+        metrics = {
             "glucose_concentration": {"value": self.glucose_concentration, "unit": "mg/dL", "normal_range": (70, 140)},
+            "fatty_acid_concentration": {"value": self.fatty_acid_concentration, "unit": "mg/L", "normal_range": (70, 110)},
+            "amino_acid_concentration": {"value": self.amino_acid_concentration, "unit": "mg/L", "normal_range": (30, 50)},
             "systolic_pressure": {"value": self.systolic_pressure, "unit": "mmHg", "normal_range": (90, 140)},
             "diastolic_pressure": {"value": self.diastolic_pressure, "unit": "mmHg", "normal_range": (60, 90)},
             "mean_arterial_pressure": {"value": self.mean_arterial_pressure, "unit": "mmHg", "normal_range": (70, 100)},
@@ -184,12 +199,13 @@ class Blood:
             "inactive_vitamin_d_concentration": {"value": self.inactive_vitamin_d_concentration, "unit": "ng/mL", "normal_range": (20, 50)},
             "active_vitamin_d_concentration": {"value": self.active_vitamin_d_concentration, "unit": "ng/mL", "normal_range": (20, 50)},
             "pco2": {"value": self.pco2, "unit": "mmHg", "normal_range": (35, 45)},
+            "ammonia_concentration": {"value": self.ammonia_concentration, "unit": "μg/L", "normal_range": (10, 80)},
         }
+        return metrics
 
     def update(self, dt: float):
         self._update_ph(dt)
         self._update_bicarbonate(dt)
-        self._degrade_hormones(dt)
 
     def _update_ph(self, dt: float):
         new_ph = 6.1 + math.log10(max(self.bicarbonate_concentration, 1e-6) / (0.03 * self.pco2))
@@ -201,9 +217,3 @@ class Blood:
         bicarbonate_change = (self.ph - 7.4) * 0.5 * dt / 60 * (self.volume / 1000)
         self.bicarbonate_amount = max(self.bicarbonate_amount + bicarbonate_change, 0)
 
-    def _degrade_hormones(self, dt: float):
-        degradation_rate = 0.01  # 1% degradation per minute
-        self.insulin_amount *= (1 - degradation_rate * dt / 60)
-        self.glucagon_amount *= (1 - degradation_rate * dt / 60)
-        self.epinephrine_amount *= (1 - degradation_rate * dt / 60)
-        # Add more hormones as needed

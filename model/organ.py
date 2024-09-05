@@ -136,6 +136,10 @@ class Organ:
             self.blood.glucose_amount * 0.1  # Limit uptake to 10% of available glucose
         )
         self.blood.glucose_amount -= glucose_uptake
+        
+        # Reduce insulin in the blood as it's used
+        insulin_used = glucose_uptake * 0.001  # Assume 1 unit of insulin per 1000 mg of glucose
+        self.blood.insulin_amount = max(0, self.blood.insulin_amount - insulin_used)
 
     def _organ_specific_processing(self, dt: float) -> None:
         # To be overridden by subclasses
