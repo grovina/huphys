@@ -57,13 +57,11 @@ class Heart(Organ):
         self.pumping_rate *= 1 + signal * 0.1  # beats per minute
 
     def _organ_specific_metrics(self) -> dict:
-        metrics = super()._organ_specific_metrics()
-        metrics.update({
-            "pumping_rate": {"value": self.pumping_rate, "unit": "beats/min", "normal_range": (40, 190)},
-            "cardiac_output": {"value": self.cardiac_output, "unit": "L/min", "normal_range": (4, 15)},
-            "ejection_fraction": {"value": self.ejection_fraction, "unit": "", "normal_range": (0.5, 0.7)},
-            "stroke_volume": {"value": self.stroke_volume, "unit": "mL/beat", "normal_range": (60, 100)},
-            "peripheral_resistance": {"value": self.peripheral_resistance, "unit": "dyn·s/cm^5", "normal_range": (900, 1500)},
-            "compression": {"value": self.compression, "unit": "", "normal_range": (0, 1)},
-        })
-        return metrics
+        return {
+            "Heart Rate": {"value": self.pumping_rate, "unit": "beats/min", "normal_range": (40, 190)},
+            "Cardiac Output": {"value": self.cardiac_output, "unit": "L/min", "normal_range": (4, 15)},
+            "Ejection Fraction": {"value": self.ejection_fraction, "unit": "", "normal_range": (0.5, 0.7)},
+            "Stroke Volume": {"value": self.stroke_volume, "unit": "mL/beat", "normal_range": (60, 100)},
+            "Peripheral Resistance": {"value": self.peripheral_resistance, "unit": "dyn·s/cm^5", "normal_range": (900, 1500)},
+            "Myocardial Contraction": {"value": self.compression, "unit": "", "normal_range": (0, 1)},
+        }

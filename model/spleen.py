@@ -16,4 +16,6 @@ class Spleen(Organ):
         pass
 
     def _organ_specific_metrics(self) -> dict:
-        return {"blood_storage": {"value": self.blood_storage, "unit": "mL", "normal_range": (100, 300)}}
+        return {
+            "Blood Storage": {"value": self.blood_storage, "unit": "mL", "normal_range": (100, 300)}
+        }

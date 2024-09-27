@@ -120,7 +120,7 @@ class Liver(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "glucose_storage": {"value": self.glucose_storage, "unit": "g", "normal_range": (50, 200)},
+            "Glucose Storage": {"value": self.glucose_storage, "unit": "g", "normal_range": (50, 200)},
         }
 
 class GallBladder(Organ):
@@ -150,5 +150,5 @@ class GallBladder(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "bile_storage": {"value": self.bile_storage, "unit": "mL", "normal_range": (0, 50)}
+            "Bile Storage": {"value": self.bile_storage, "unit": "mL", "normal_range": (0, 50)}
         }

@@ -78,14 +78,14 @@ class Lungs(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "tidal_volume": {"value": self.tidal_volume, "unit": "mL", "normal_range": (400, 600)},
-            "respiratory_rate": {"value": self.respiratory_rate, "unit": "breaths/min", "normal_range": (12, 20)},
-            "alveolar_po2": {"value": self.alveolar_po2, "unit": "mmHg", "normal_range": (95, 105)},
-            "alveolar_pco2": {"value": self.alveolar_pco2, "unit": "mmHg", "normal_range": (35, 45)},
-            "expansion": {"value": self.expansion, "unit": "", "normal_range": (0, 1)},
-            "alveolar_volume": {"value": self.functional_residual_capacity + (self.tidal_volume * self.expansion), "unit": "mL", "normal_range": (2000, 3000)},
-            "minute_ventilation": {"value": self.tidal_volume * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (5, 8)},
-            "alveolar_ventilation": {"value": (self.tidal_volume - self.dead_space_volume) * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (4, 6)}
+            "Tidal Volume": {"value": self.tidal_volume, "unit": "mL", "normal_range": (400, 600)},
+            "Respiratory Rate": {"value": self.respiratory_rate, "unit": "breaths/min", "normal_range": (12, 20)},
+            "Alveolar PO2": {"value": self.alveolar_po2, "unit": "mmHg", "normal_range": (95, 105)},
+            "Alveolar PCO2": {"value": self.alveolar_pco2, "unit": "mmHg", "normal_range": (35, 45)},
+            "Lung Expansion": {"value": self.expansion, "unit": "", "normal_range": (0, 1)},
+            "Alveolar Volume": {"value": self.functional_residual_capacity + (self.tidal_volume * self.expansion), "unit": "mL", "normal_range": (2000, 3000)},
+            "Minute Ventilation": {"value": self.tidal_volume * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (5, 8)},
+            "Alveolar Ventilation": {"value": (self.tidal_volume - self.dead_space_volume) * self.respiratory_rate / 1000, "unit": "L/min", "normal_range": (4, 6)}
         }
 
     def receive_brain_signal(self, signal: float):

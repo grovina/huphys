@@ -65,7 +65,7 @@ class Muscles(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "glucose_uptake_rate": {"value": self.glucose_uptake_rate, "unit": "mg/min", "normal_range": (2, 20)},
-            "glycogen_storage": {"value": self.glycogen_storage, "unit": "g", "normal_range": (200, 800)},
-            "energy_demand": {"value": self.energy_demand, "unit": "kcal/hour", "normal_range": (10, 100)}
+            "Glucose Uptake Rate": {"value": self.glucose_uptake_rate, "unit": "mg/min", "normal_range": (2, 20)},
+            "Glycogen Storage": {"value": self.glycogen_storage, "unit": "g", "normal_range": (200, 800)},
+            "Energy Demand": {"value": self.energy_demand, "unit": "kcal/hour", "normal_range": (10, 100)}
         }

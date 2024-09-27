@@ -143,9 +143,8 @@ class Bladder(Organ):
         urine_output = self.urine_volume
         self.urine_volume = 0
         return urine_output
-
     def _organ_specific_metrics(self) -> dict:
         return {
-            "urine_volume": {"value": self.urine_volume, "unit": "mL", "normal_range": (0, self.max_capacity)},
-            "fullness_percentage": {"value": (self.urine_volume / self.max_capacity) * 100, "unit": "%", "normal_range": (0, 100)}
+            "Urine Volume": {"value": self.urine_volume, "unit": "mL", "normal_range": (0, self.max_capacity)},
+            "Fullness Percentage": {"value": (self.urine_volume / self.max_capacity) * 100, "unit": "%", "normal_range": (0, 100)}
         }

@@ -49,9 +49,9 @@ class Fat(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "fat_reserve": {"value": self.fat_reserve, "unit": "g", "normal_range": (5000, 20000)},
-            "insulin_sensitivity": {"value": self.insulin_sensitivity, "unit": "", "normal_range": (1.0, 3.0)},
-            "glucagon_sensitivity": {"value": self.glucagon_sensitivity, "unit": "", "normal_range": (0.5, 1.5)},
-            "lipolysis_rate": {"value": self.lipolysis_rate, "unit": "g/min", "normal_range": (0.05, 0.2)},
+            "Fat Reserve": {"value": self.fat_reserve, "unit": "g", "normal_range": (5000, 20000)},
+            "Insulin Sensitivity": {"value": self.insulin_sensitivity, "unit": "", "normal_range": (1.0, 3.0)},
+            "Glucagon Sensitivity": {"value": self.glucagon_sensitivity, "unit": "", "normal_range": (0.5, 1.5)},
+            "Lipolysis Rate": {"value": self.lipolysis_rate, "unit": "g/min", "normal_range": (0.05, 0.2)},
         }
 

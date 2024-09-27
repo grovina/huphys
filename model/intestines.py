@@ -92,15 +92,14 @@ class Intestines(Organ):
 
     def receive_bile(self, amount: float):
         self.bile_content += amount
-
     def _organ_specific_metrics(self) -> dict:
         return {
-            "absorption_rate": {"value": self.absorption_rate, "unit": "", "normal_range": (0.03, 0.3)},
-            "carbohydrate_content": {"value": self.carbohydrate_content, "unit": "g", "normal_range": (0, 1000)},
-            "protein_content": {"value": self.protein_content, "unit": "g", "normal_range": (0, 1000)},
-            "fat_content": {"value": self.fat_content, "unit": "g", "normal_range": (0, 1000)},
-            "fiber_content": {"value": self.fiber_content, "unit": "g", "normal_range": (0, 1000)},
-            "water_content": {"value": self.water_content, "unit": "mL", "normal_range": (0, 1000)},
-            "bile_content": {"value": self.bile_content, "unit": "mL", "normal_range": (0, 50)}
+            "Absorption Rate": {"value": self.absorption_rate, "unit": "", "normal_range": (0.03, 0.3)},
+            "Carbohydrate Content": {"value": self.carbohydrate_content, "unit": "g", "normal_range": (0, 1000)},
+            "Protein Content": {"value": self.protein_content, "unit": "g", "normal_range": (0, 1000)},
+            "Fat Content": {"value": self.fat_content, "unit": "g", "normal_range": (0, 1000)},
+            "Fiber Content": {"value": self.fiber_content, "unit": "g", "normal_range": (0, 1000)},
+            "Water Content": {"value": self.water_content, "unit": "mL", "normal_range": (0, 1000)},
+            "Bile Content": {"value": self.bile_content, "unit": "mL", "normal_range": (0, 50)}
         }
 

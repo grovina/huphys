@@ -142,6 +142,6 @@ class Brain(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "urine_production_signal": {"value": self.urine_production_signal, "unit": "", "normal_range": (-1, 1)},
-            "respiratory_rate_signal": {"value": self.respiratory_rate_signal, "unit": "", "normal_range": (-1, 1)}
+            "Urine Production Signal": {"value": self.urine_production_signal, "unit": "", "normal_range": (-1, 1)},
+            "Respiratory Rate Signal": {"value": self.respiratory_rate_signal, "unit": "", "normal_range": (-1, 1)}
         }

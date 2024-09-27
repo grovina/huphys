@@ -62,6 +62,6 @@ class Pancreas(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "insulin_production_rate": {"value": self.insulin_production_rate, "unit": "μU/mL/min", "normal_range": (0.3, 0.7)},
-            "glucagon_production_rate": {"value": self.glucagon_production_rate, "unit": "ng/mL/min", "normal_range": (0.05, 0.15)},
+            "Insulin Production Rate": {"value": self.insulin_production_rate, "unit": "μU/mL/min", "normal_range": (0.3, 0.7)},
+            "Glucagon Production Rate": {"value": self.glucagon_production_rate, "unit": "ng/mL/min", "normal_range": (0.05, 0.15)},
         }

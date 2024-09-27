@@ -25,5 +25,5 @@ class Bones(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "calcium_content": {"value": self.calcium_content, "unit": "g", "normal_range": (900, 1100)},
+            "Calcium": {"value": self.calcium_content, "unit": "g", "normal_range": (900, 1100)},
         }

@@ -103,6 +103,6 @@ class Stomach(Organ):
 
     def _organ_specific_metrics(self) -> dict:
         return {
-            "food_content": {"value": self.food_content, "unit": "g", "normal_range": (0, 1000)},
-            "water_content": {"value": self.water_content, "unit": "mL", "normal_range": (0, 1000)},
+            "Food Content": {"value": self.food_content, "unit": "g", "normal_range": (0, 1000)},
+            "Water Content": {"value": self.water_content, "unit": "mL", "normal_range": (0, 1000)},
         }
