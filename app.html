@@ -6,11 +6,13 @@
     <title>Human Physiological Model</title>
     <style>
         :root {
-            --primary-color: #4CAF50;
-            --secondary-color: #45a049;
-            --background-color: #f4f4f4;
-            --text-color: #333;
-            --border-color: #ddd;
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --background-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --border-color: #bdc3c7;
+            --chart-background: #ffffff;
+            --metric-card-background: #ffffff;
         }
         body {
             font-family: Arial, sans-serif;
@@ -21,12 +23,12 @@
             color: var(--text-color);
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: var(--background-color);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
         }
         h1, h2 {
             text-align: center;
@@ -38,13 +40,16 @@
             color: white;
             border: none;
             border-radius: 5px;
-            padding: 10px 15px;
+            padding: 12px 20px;
             font-size: 16px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         button:hover {
             background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         #startButton {
             display: block;
@@ -60,12 +65,17 @@
         .loading {
             display: none;
             text-align: center;
-            margin-top: 10px;
+            margin-top: 20px;
         }
         .loading::after {
-            content: "⏳";
-            animation: spin 1s linear infinite;
+            content: "";
             display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid var(--primary-color);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -76,15 +86,25 @@
             justify-content: center;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 15px;
+            margin-top: 30px;
+            background-color: var(--chart-background);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .controls input[type="number"] {
-            width: 60px;
-            padding: 5px;
+            width: 80px;
+            padding: 10px;
             font-size: 14px;
             border: 1px solid var(--border-color);
-            border-radius: 3px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .controls input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
         .dashboard {
             display: grid;
@@ -93,11 +113,16 @@
             margin-top: 20px;
         }
         .chart-container {
-            background-color: #fff;
+            background-color: var(--chart-background);
             border: 1px solid var(--border-color);
-            border-radius: 5px;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
         }
         .metrics-container {
             grid-column: 1 / -1;
@@ -106,17 +131,39 @@
             gap: 20px;
         }
         .metric-card {
-            background-color: #fff;
+            background-color: var(--metric-card-background);
             border: 1px solid var(--border-color);
-            border-radius: 5px;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
         }
         .metric-card h3 {
             margin-top: 0;
-            margin-bottom: 10px;
-            font-size: 18px;
+            margin-bottom: 15px;
+            font-size: 20px;
             color: var(--primary-color);
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .metric-unit {
+            font-size: 14px;
+            color: #666;
+        }
+        .metric-range {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
         }
         .out-of-range {
             color: red;
@@ -270,19 +317,27 @@
             function formatMetric(metric, key) {
                 if (typeof metric === 'object' && metric.hasOwnProperty('value') && metric.hasOwnProperty('unit')) {
                     const value = typeof metric.value === 'number' ? metric.value.toFixed(2) : metric.value;
-                    let formattedValue = value;
+                    let valueClass = '';
+                    let rangeHtml = '';
                     
                     if (metric.hasOwnProperty('normal_range')) {
                         const [min, max] = metric.normal_range;
                         if (metric.value < min || metric.value > max) {
-                            formattedValue = `<span class="out-of-range">${value}</span>`;
+                            valueClass = 'out-of-range';
                         }
-                        formattedValue = `<span class="tooltip">${formattedValue}<span class="tooltiptext">Normal range: ${min} - ${max} ${metric.unit}</span></span>`;
+                        rangeHtml = `<div class="metric-range">Normal range: ${min} - ${max} ${metric.unit}</div>`;
                     }
                     
-                    return `${key}: ${formattedValue} ${metric.unit}`;
+                    return `
+                        <div>
+                            <h3>${key}</h3>
+                            <div class="metric-value ${valueClass}">${value}</div>
+                            <div class="metric-unit">${metric.unit}</div>
+                            ${rangeHtml}
+                        </div>
+                    `;
                 }
-                return `${key}: ${JSON.stringify(metric)}`;
+                return `<div><h3>${key}</h3><div>${JSON.stringify(metric)}</div></div>`;
             }
 
             function formatMetrics(obj, indent = 0) {
